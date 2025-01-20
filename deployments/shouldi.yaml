@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shouldi
+  namespace: scratch
+  labels:
+    app: shouldi
+spec:
+  replicas: 1
+  strategy:
+  selector:
+    matchLabels:
+      app: shouldi
+  template:
+    metadata:
+      labels:
+        app: shouldi
+    spec:
+      containers:
+      - name: shouldi
+        image: docker.io/gaf3/unifist-unum-scratch:0.0.2
+        imagePullPolicy: Always
+        command:
+        - "/opt/service/bin/shouldi.py"
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        volumeMounts:
+        - name: config
+          mountPath: "/opt/service/config"
+          readOnly: true
+        - name: secret
+          mountPath: "/opt/service/secret"
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: config
+      - name: secret
+        secret:
+          secretName: secret
+          defaultMode: 0600
