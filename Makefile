@@ -1,6 +1,6 @@
 ACCOUNT=gaf3
 IMAGE=unifist-unum-scratch
-VERSION?=0.0.2
+VERSION?=0.0.3
 DEBUG_PORT=16738
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/bin/:/opt/service/bin/ \
@@ -15,7 +15,7 @@ CLUSTER=do-nyc2-unifist-dev-nyc2
 APP=scratch
 
 
-.PHONY: zip unzip secret config build shell post basesheet ohsheet sheetpost hello shouldi draft deploy-hello deploy-shouldi
+.PHONY: zip unzip secret config build shell post basesheet ohsheet sheetpost hello shouldi outreach draft deploy-hello deploy-shouldi deploy-needsheet
 
 zip:
 	zip secret.zip secret/*
@@ -67,8 +67,14 @@ shouldi:
 draft:
 	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "bin/draft.py"
 
+needsheet:
+	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "bin/needsheet.py"
+
 deploy-hello:
 	kubectl --context $(CLUSTER) apply -f deployments/hello.yaml
 
 deploy-shouldi:
 	kubectl --context $(CLUSTER) apply -f deployments/shouldi.yaml
+
+deploy-needsheet:
+	kubectl --context $(CLUSTER) apply -f deployments/needsheet.yaml
