@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: needsheet
-        image: docker.io/gaf3/unifist-unum-scratch:0.0.3
+        image: docker.io/gaf3/unifist-unum-scratch:0.0.4
         imagePullPolicy: Always
         command:
         - "/opt/service/bin/needsheet.py"

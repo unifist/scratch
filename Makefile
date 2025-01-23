@@ -1,6 +1,6 @@
 ACCOUNT=gaf3
 IMAGE=unifist-unum-scratch
-VERSION?=0.0.3
+VERSION?=0.0.4
 DEBUG_PORT=16738
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/bin/:/opt/service/bin/ \
