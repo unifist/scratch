@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: needsheet
+  namespace: scratch
+  labels:
+    app: needsheet
+spec:
+  replicas: 1
+  strategy:
+  selector:
+    matchLabels:
+      app: needsheet
+  template:
+    metadata:
+      labels:
+        app: needsheet
+    spec:
+      containers:
+      - name: needsheet
+        image: docker.io/gaf3/unifist-unum-scratch:0.0.3
+        imagePullPolicy: Always
+        command:
+        - "/opt/service/bin/needsheet.py"
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        volumeMounts:
+        - name: config
+          mountPath: "/opt/service/config"
+          readOnly: true
+        - name: secret
+          mountPath: "/opt/service/secret"
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: config
+      - name: secret
+        secret:
+          secretName: secret
+          defaultMode: 0600
