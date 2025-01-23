@@ -69,6 +69,50 @@ class MyClient(discord.Client):
                 if len(category) > 1:
                     await message.reply(f"Create Category: {listing} - {category}?", mention_author=True)
 
+        # List Resources
+        if message.content.startswith("*res"):
+
+            if " " not in message.content:
+                await message.reply(f"Usage: *res/source (Listing)", mention_author=True)
+                return
+
+            gspread_client = gsheets.connect()
+
+            listing = message.content.split(" ", 1)[1]
+            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
+
+            for resource in gsheets.rows(gspread_client, f"Outreach Development {listing}", "Resources"):
+
+                content = [listing, resource['Resource']]
+
+                if resource['Description']:
+                    content.append(resource['Description'])
+
+                await message.reply(f"Resource: {' - '.join(content)}.", mention_author=True)
+
+        # Create Resource
+        if message.content.startswith("+res"):
+
+            if not " - " in message.content and "\n" not in message.content:
+                await message.reply(f"Usage: +res/source (Listing) -|\\n Name (- Description: optional) \\n...", mention_author=True)
+                return
+
+            listing_resource = message.content.split(" ", 1)[1]
+
+            if "\n" in listing_resource:
+                resources = listing_resource.split("\n")
+                listing = resources.pop(0)
+            elif " - " in listing_resource:
+                listing, resource = listing_resource.split(" - ", 1)
+                resources = [resource]
+
+            gspread_client = gsheets.connect()
+            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
+
+            for resource in resources:
+                if len(resource) > 1:
+                    await message.reply(f"Create Resource: {listing} - {resource}?", mention_author=True)
+
 
     async def on_reaction_add(self, reaction, user):
 
@@ -99,7 +143,7 @@ class MyClient(discord.Client):
 
             await reaction.message.edit(content=f"Created Listing: {listing}\n{listing_url}.")
 
-        # Create Cateogry
+        # Create Category
         if (
             self.user.id == reaction.message.author.id and
             reaction.message.content.startswith("Create Category: ") and
@@ -123,6 +167,31 @@ class MyClient(discord.Client):
             categories.append_row([name, description], table_range="A1:B1")
 
             await reaction.message.edit(content=f"Created Category: {listing} - {category}.")
+
+        # Create Resource
+        if (
+            self.user.id == reaction.message.author.id and
+            reaction.message.content.startswith("Create Resource: ") and
+            reaction.message.content.endswith("?") and
+            reaction.emoji == '👍'
+        ):
+
+            listing_resource = reaction.message.content[len("Create Resource: "):-len("?")]
+
+            listing, resource = listing_resource.split(" - ", 1)
+
+            description = ""
+
+            if " - " in resource:
+                name, description = resource.split(" - ", 1)
+            else:
+                name = resource
+
+            gspread_client = gsheets.connect()
+            resources = gspread_client.open(f"Outreach Development {listing}").worksheet("Resources")
+            resources.append_row([name, description], table_range="A1:B1")
+
+            await reaction.message.edit(content=f"Created Resource: {listing} - {resource}.")
 
 
 with open("/opt/service/secret/discord.json", "r") as creds_file:
