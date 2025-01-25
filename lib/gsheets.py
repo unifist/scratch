@@ -1,31 +1,47 @@
 import gspread
-import Levenshtein
+import unum
 
 
-def connect():
-    """ Conencts to gspread using the deaful secret file """
+class API:
 
-    return gspread.service_account(filename="/opt/service/secret/gcloud.json")
+    def __init__(self):
+        """ Conencts to gspread using the deaful secret file """
 
-
-def rows(client, sheet, worksheet):
-    """ Returns all rows """
-
-    return client.open(sheet).worksheet(worksheet).get_all_records()
+        self.gspread = gspread.service_account(filename="/opt/service/secret/gcloud.json")
 
 
-def values(client, sheet, worksheet, column):
-    """ Returns all the values for a column"""
+    def rows(self, sheet, worksheet):
+        """ Returns all rows """
 
-    return [row.get(column) for row in rows(client, sheet, worksheet)]
+        return self.gspread.open(sheet).worksheet(worksheet).get_all_records()
 
 
-def closest(client, sheet, worksheet, column, needle):
-    """ Finds the closet match in a Sheet """
+    def values(self, sheet, worksheet, column):
+        """ Returns all the values for a column"""
 
-    haystack = values(client, sheet, worksheet, column)
+        return [row.get(column) for row in self.rows(sheet, worksheet)]
 
-    if haystack:
-        return sorted(haystack, key=lambda value: Levenshtein.distance(value, needle))[0]
 
-    return None
+    def closest(self, sheet, worksheet, column, needle):
+        """ Finds the closet match in a Sheet """
+
+        haystack = self.values(sheet, worksheet, column)
+
+        if haystack:
+            return unum.closest(haystack, needle)
+
+        return None
+
+    def list(self, sheet, worksheet, fields):
+        """ List any sheet """
+
+        rows = []
+
+        for row in self.rows(sheet, worksheet):
+            values = []
+            for field in fields:
+                if row.get(field):
+                    values.append(row[field])
+            rows.append(values)
+
+        return rows

@@ -2,9 +2,11 @@
 
 import re
 import json
+import Levenshtein
 import gsheets
 import discord
 import github
+import outreach
 
 class MyClient(discord.Client):
 
@@ -12,6 +14,7 @@ class MyClient(discord.Client):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
 
+        self.outreach = outreach.API()
 
     async def on_message(self, message):
 
@@ -19,99 +22,94 @@ class MyClient(discord.Client):
         if message.author.id == self.user.id:
             return
 
+        # List Listings
+        if message.content.startswith("*lis"):
+
+            listings = self.outreach.list_listings()
+
+            for listing in listings:
+                await message.reply(f"Listing: {' - '.join(listing)}.", mention_author=True)
+
         # Create Listing
-        if message.content.startswith("+lis"):
-            listing = message.content.split(" ", 1)[1]
-            if len(listing) > 1:
+        elif message.content.startswith("+lis"):
+
+            listings = self.outreach.parse_listings(message.content)
+
+            for listing in listings:
                 await message.reply(f"Create Listing: {listing}?", mention_author=True)
 
         # List Categories
-        if message.content.startswith("*cat"):
+        elif message.content.startswith("*cat"):
 
             if " " not in message.content:
                 await message.reply(f"Usage: *cat/egory (Listing)", mention_author=True)
                 return
 
-            gspread_client = gsheets.connect()
+            listing, categories = self.outreach.list_categories(message.content.split(" ", 1)[1])
 
-            listing = message.content.split(" ", 1)[1]
-            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
-
-            for category in gsheets.rows(gspread_client, f"Outreach Development {listing}", "Categories"):
-
-                content = [listing, category['Category']]
-
-                if category['Description']:
-                    content.append(category['Description'])
-
-                await message.reply(f"Category: {' - '.join(content)}.", mention_author=True)
+            for category in categories:
+                await message.reply(f"Category: {' - '.join([listing] + category)}.", mention_author=True)
 
         # Create Category
-        if message.content.startswith("+cat"):
+        elif message.content.startswith("+cat"):
 
             if not " - " in message.content and "\n" not in message.content:
                 await message.reply(f"Usage: +cat/egory (Listing) -|\\n Name (- Description: optional) \\n...", mention_author=True)
                 return
 
-            listing_category = message.content.split(" ", 1)[1]
-
-            if "\n" in listing_category:
-                categories = listing_category.split("\n")
-                listing = categories.pop(0)
-            elif " - " in listing_category:
-                listing, category = listing_category.split(" - ", 1)
-                categories = [category]
-
-            gspread_client = gsheets.connect()
-            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
+            listing, categories = self.outreach.parse_categories(message.content.split(" ", 1)[1])
 
             for category in categories:
-                if len(category) > 1:
-                    await message.reply(f"Create Category: {listing} - {category}?", mention_author=True)
+                await message.reply(f"Create Category: {listing} - {category}?", mention_author=True)
 
         # List Resources
-        if message.content.startswith("*res"):
+        elif message.content.startswith("*res"):
 
             if " " not in message.content:
                 await message.reply(f"Usage: *res/source (Listing)", mention_author=True)
                 return
 
-            gspread_client = gsheets.connect()
+            listing, resources = self.outreach.list_resources(message.content.split(" ", 1)[1])
 
-            listing = message.content.split(" ", 1)[1]
-            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
+            for resource in resources:
+                await message.reply(f"Resource: {' - '.join([listing] + resource)}.", mention_author=True)
 
-            for resource in gsheets.rows(gspread_client, f"Outreach Development {listing}", "Resources"):
-
-                content = [listing, resource['Resource']]
-
-                if resource['Description']:
-                    content.append(resource['Description'])
-
-                await message.reply(f"Resource: {' - '.join(content)}.", mention_author=True)
 
         # Create Resource
-        if message.content.startswith("+res"):
+        elif message.content.startswith("+res"):
 
-            if not " - " in message.content and "\n" not in message.content:
+            if " - " not in message.content and "\n" not in message.content:
                 await message.reply(f"Usage: +res/source (Listing) -|\\n Name (- Description: optional) \\n...", mention_author=True)
                 return
 
-            listing_resource = message.content.split(" ", 1)[1]
-
-            if "\n" in listing_resource:
-                resources = listing_resource.split("\n")
-                listing = resources.pop(0)
-            elif " - " in listing_resource:
-                listing, resource = listing_resource.split(" - ", 1)
-                resources = [resource]
-
-            gspread_client = gsheets.connect()
-            listing = gsheets.closest(gspread_client, "Outreach Development Admin", "Listings", "Listing", listing)
+            listing, resources = self.outreach.parse_resources(message.content.split(" ", 1)[1])
 
             for resource in resources:
-                if len(resource) > 1:
-                    await message.reply(f"Create Resource: {listing} - {resource}?", mention_author=True)
+                await message.reply(f"Create Resource: {listing} - {resource}?", mention_author=True)
+
+        # List Sources
+        elif message.content.startswith("*sou"):
+
+            if " " not in message.content:
+                await message.reply(f"Usage: *sou/rce (Listing)", mention_author=True)
+                return
+
+            listing, sources = self.outreach.list_sources(message.content.split(" ", 1)[1])
+
+            for source in sources:
+                await message.reply(f"Source: {'\n'.join([listing] + source)}", mention_author=True)
+
+        # Find Source
+        elif message.content.startswith("+sou"):
+
+            if " - " not in message.content and "\n" not in message.content:
+                await message.reply(f"Usage: +sou/rce (Listing) +cat +res -|\\n (link|name)\\n...", mention_author=True)
+                return
+
+            listing, catres, sources = self.outreach.parse_sources(message.content.split(" ", 1)[1])
+
+            for source in sources:
+                await message.reply(f"Create Source: {listing} {catres}- {source}?", mention_author=True)
 
 
     async def on_reaction_add(self, reaction, user):
@@ -124,22 +122,7 @@ class MyClient(discord.Client):
             reaction.emoji == '👍'
         ):
 
-            listing = reaction.message.content[len("Create Listing: "):-len("?")]
-            description = ""
-
-            if " - " in listing:
-                name, description = listing.split(" - ", 1)
-            else:
-                name = listing
-
-            gspread_client = gsheets.connect()
-            base = gspread_client.open("Outreach Development Base")
-
-            gspread_client.copy(base.id, title=f"Outreach Development {name}")
-            listing_url = gspread_client.open(f"Outreach Development {name}").url
-
-            listings = gspread_client.open("Outreach Development Admin").worksheet("Listings")
-            listings.append_row([name, description], table_range="A1:B1")
+            listing, listing_url = self.outreach.create_listing(reaction.message.content[len("Create Listing: "):-len("?")])
 
             await reaction.message.edit(content=f"Created Listing: {listing}\n{listing_url}.")
 
@@ -151,20 +134,7 @@ class MyClient(discord.Client):
             reaction.emoji == '👍'
         ):
 
-            listing_category = reaction.message.content[len("Create Category: "):-len("?")]
-
-            listing, category = listing_category.split(" - ", 1)
-
-            description = ""
-
-            if " - " in category:
-                name, description = category.split(" - ", 1)
-            else:
-                name = category
-
-            gspread_client = gsheets.connect()
-            categories = gspread_client.open(f"Outreach Development {listing}").worksheet("Categories")
-            categories.append_row([name, description], table_range="A1:B1")
+            listing, category = self.outreach.create_category(reaction.message.content[len("Create Category: "):-len("?")])
 
             await reaction.message.edit(content=f"Created Category: {listing} - {category}.")
 
@@ -176,22 +146,21 @@ class MyClient(discord.Client):
             reaction.emoji == '👍'
         ):
 
-            listing_resource = reaction.message.content[len("Create Resource: "):-len("?")]
-
-            listing, resource = listing_resource.split(" - ", 1)
-
-            description = ""
-
-            if " - " in resource:
-                name, description = resource.split(" - ", 1)
-            else:
-                name = resource
-
-            gspread_client = gsheets.connect()
-            resources = gspread_client.open(f"Outreach Development {listing}").worksheet("Resources")
-            resources.append_row([name, description], table_range="A1:B1")
+            listing, resource = self.outreach.create_resource(reaction.message.content[len("Create Resource: "):-len("?")])
 
             await reaction.message.edit(content=f"Created Resource: {listing} - {resource}.")
+
+        # Create Source
+        if (
+            self.user.id == reaction.message.author.id and
+            reaction.message.content.startswith("Create Source: ") and
+            reaction.message.content.endswith("?") and
+            reaction.emoji == '👍'
+        ):
+
+            listing_catres_source = self.outreach.create_source(reaction.message.content[len("Create Source: "):-len("?")])
+
+            await reaction.message.edit(content=f"Created Source: {listing_catres_source}.")
 
 
 with open("/opt/service/secret/discord.json", "r") as creds_file:
