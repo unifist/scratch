@@ -15,7 +15,7 @@ CLUSTER=do-nyc2-unifist-dev-nyc2
 APP=scratch
 
 
-.PHONY: zip unzip secret config build shell post basesheet ohsheet sheetpost hello shouldi outreach draft deploy-hello deploy-shouldi deploy-needsheet
+.PHONY: zip unzip secret config build shell post basesheet ohsheet sheetpost hello shouldi outreach draft meetdown deploy-hello deploy-shouldi deploy-needsheet
 
 zip:
 	zip secret.zip secret/*
@@ -69,6 +69,9 @@ draft:
 
 needsheet:
 	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "bin/needsheet.py"
+
+meetdown:
+	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "bin/meetdown.py"
 
 deploy-hello:
 	kubectl --context $(CLUSTER) apply -f deployments/hello.yaml
