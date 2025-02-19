@@ -164,7 +164,7 @@ class MyClient(discord.Client):
 
 
 with open("/opt/service/secret/discord.json", "r") as creds_file:
-        token = json.load(creds_file)["token"]
+    token = json.load(creds_file)["token"]
 
 intents = discord.Intents.default()
 intents.message_content = True
